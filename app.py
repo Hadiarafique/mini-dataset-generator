@@ -143,6 +143,20 @@ def main():
         st.sidebar.warning("⚠️ At least one class name is required")
         class_names = ['object']
     
+    st.sidebar.subheader("🏷️ Label Support")
+    has_labels = st.sidebar.checkbox(
+        "I have existing labels",
+        value=False,
+        help="Check if you want to upload labels with your images"
+    )
+    
+    export_format = st.sidebar.selectbox(
+        "Export Label Format",
+        options=["YOLO", "COCO JSON", "Pascal VOC XML"],
+        index=0,
+        help="Format for exported labels"
+    )
+    
     st.sidebar.subheader("🔍 Duplicate Detection")
     duplicate_threshold = st.sidebar.slider(
         "Similarity Threshold",
@@ -250,6 +264,21 @@ def main():
             st.metric("Files", len(uploaded_files))
             st.metric("Total Size", f"{total_size:.1f} MB")
     
+    # Label upload (optional)
+    uploaded_labels = None
+    if has_labels:
+        st.subheader("🏷️ Step 1b: Upload Labels (Optional)")
+        uploaded_labels = st.file_uploader(
+            "Upload YOLO label files (.txt)",
+            type=['txt'],
+            accept_multiple_files=True,
+            help="Upload .txt label files matching your image names"
+        )
+        
+        if uploaded_labels:
+            st.success(f"✅ Uploaded {len(uploaded_labels)} label files")
+            st.info("💡 **Tip:** Label filenames should match image filenames (e.g., `image1.jpg` → `image1.txt`)")
+    
     if uploaded_files:
         st.session_state.uploaded_file_count = len(uploaded_files)
         
@@ -302,7 +331,9 @@ def main():
                 train_ratio=train_ratio,
                 test_ratio=test_ratio,
                 valid_ratio=valid_ratio,
-                include_augmented=include_augmented
+                include_augmented=include_augmented,
+                uploaded_labels=uploaded_labels,
+                export_format=export_format
             )
     else:
         st.info("👆 Upload images to get started")
@@ -330,8 +361,9 @@ def main():
 
 
 def process_dataset(uploaded_files, dataset_name, class_names, duplicate_threshold, 
-                   num_augmentations, train_ratio, test_ratio, valid_ratio, include_augmented):
-    """Process uploaded images and create dataset."""
+                   num_augmentations, train_ratio, test_ratio, valid_ratio, include_augmented,
+                   uploaded_labels=None, export_format="YOLO"):
+    """Process uploaded images and create dataset with optional label support."""
     
     start_time = time.time()
     
@@ -344,6 +376,11 @@ def process_dataset(uploaded_files, dataset_name, class_names, duplicate_thresho
         # Create persistent input folder
         input_folder = output_folder / "temp_input_images"
         input_folder.mkdir(parents=True, exist_ok=True)
+        
+        # Create labels folder if labels are provided
+        if uploaded_labels:
+            input_labels_folder = output_folder / "temp_input_labels"
+            input_labels_folder.mkdir(parents=True, exist_ok=True)
         
         # Save uploaded files
         st.info("💾 Saving uploaded images...")
@@ -362,6 +399,39 @@ def process_dataset(uploaded_files, dataset_name, class_names, duplicate_thresho
                 return
         
         st.success(f"✅ Saved {len(image_paths)} images")
+        
+        # Save uploaded labels if provided
+        label_mapping = {}
+        if uploaded_labels:
+            st.info("💾 Saving uploaded labels...")
+            progress_bar_labels = st.progress(0)
+            
+            for idx, uploaded_label in enumerate(uploaded_labels):
+                try:
+                    label_path = input_labels_folder / uploaded_label.name
+                    with open(label_path, 'wb') as f:
+                        f.write(uploaded_label.getbuffer())
+                    
+                    # Map label to image (by filename stem)
+                    label_stem = Path(uploaded_label.name).stem
+                    label_mapping[label_stem] = str(label_path)
+                    progress_bar_labels.progress((idx + 1) / len(uploaded_labels))
+                except Exception as e:
+                    st.warning(f"⚠️ Failed to save label {uploaded_label.name}: {str(e)}")
+            
+            st.success(f"✅ Saved {len(label_mapping)} label files")
+            
+            # Validate label-image matching
+            matched = 0
+            for img_path in image_paths:
+                img_stem = Path(img_path).stem
+                if img_stem in label_mapping:
+                    matched += 1
+            
+            if matched > 0:
+                st.info(f"🔗 Matched {matched}/{len(image_paths)} images with labels")
+            else:
+                st.warning("⚠️ No labels matched with image filenames. Labels should have the same name as images.")
         
         # Step 1: Remove duplicates
         st.markdown("---")
@@ -492,6 +562,50 @@ def process_dataset(uploaded_files, dataset_name, class_names, duplicate_thresho
             st.metric("Classes", len(result['classes']))
         
         st.info(f"🏷️ Classes: {', '.join(result['classes'])}")
+        
+        # Step 3.5: Convert label formats if requested
+        if export_format != "YOLO" and uploaded_labels:
+            st.markdown("---")
+            st.subheader(f"📄 Step 3.5: Converting Labels to {export_format}")
+            
+            try:
+                from src.label_converter import LabelConverter
+                
+                with st.spinner(f"Converting labels to {export_format}..."):
+                    converter = LabelConverter(class_names=class_names)
+                    dataset_path = Path(result['dataset_path'])
+                    
+                    if export_format == "COCO JSON":
+                        # Convert train, test, valid separately
+                        for split in ['train', 'test', 'valid']:
+                            images_dir = dataset_path / split / 'images'
+                            labels_dir = dataset_path / split / 'labels'
+                            output_json = dataset_path / split / f'annotations_{split}.json'
+                            
+                            if images_dir.exists() and labels_dir.exists():
+                                converter.yolo_to_coco(str(images_dir), str(labels_dir), str(output_json))
+                        
+                        st.success(f"✅ Converted labels to COCO JSON format")
+                    
+                    elif export_format == "Pascal VOC XML":
+                        # Convert all splits
+                        for split in ['train', 'test', 'valid']:
+                            images_dir = dataset_path / split / 'images'
+                            labels_dir = dataset_path / split / 'labels'
+                            xml_dir = dataset_path / split / 'annotations_xml'
+                            xml_dir.mkdir(exist_ok=True)
+                            
+                            if images_dir.exists() and labels_dir.exists():
+                                for img_file in images_dir.glob('*'):
+                                    if img_file.suffix.lower() in ['.jpg', '.jpeg', '.png', '.bmp']:
+                                        label_file = labels_dir / f"{img_file.stem}.txt"
+                                        if label_file.exists():
+                                            converter.yolo_to_voc(str(img_file), str(label_file), str(xml_dir))
+                        
+                        st.success(f"✅ Converted labels to Pascal VOC XML format")
+                
+            except Exception as e:
+                st.warning(f"⚠️ Label conversion failed: {str(e)}")
         
         # Step 4: Create ZIP
         st.markdown("---")
