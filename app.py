@@ -120,7 +120,7 @@ def main():
     st.markdown('<p class="main-header">🎨 Mini Dataset Generator</p>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Create professional YOLO datasets with AI-powered augmentation and duplicate removal</p>', unsafe_allow_html=True)
     
-    st.info("💡 **Quick Start:** Upload 10-20 images → Configure settings in sidebar → Click Generate Dataset → Download ZIP")
+    st.info("💡 **Quick Start:** Upload images → Configure settings in sidebar → Click Generate Dataset → Download ZIP")
     
     # Sidebar configuration
     st.sidebar.header("⚙️ Configuration")
@@ -218,7 +218,7 @@ def main():
     with st.sidebar.expander("❓ Help & Tips"):
         st.markdown("""
         **Recommended Settings:**
-        - Images: 10-20 for testing, 50+ for production
+        - Images: Minimum 10, 50+ for production
         - Augmentations: 5-10 per image
         - Duplicate threshold: 5 (default)
         - Train/Test/Valid: 70/15/15 (standard)
@@ -314,7 +314,7 @@ def main():
         
         with col1:
             st.markdown("### 1️⃣ Upload")
-            st.write("Upload 10-20 images of your objects")
+            st.write("Upload images of your objects")
         
         with col2:
             st.markdown("### 2️⃣ Remove Duplicates")
