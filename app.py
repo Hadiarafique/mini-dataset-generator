@@ -238,7 +238,7 @@ def main():
     col1, col2 = st.columns([3, 1])
     with col1:
         uploaded_files = st.file_uploader(
-            "Upload your images (10-20 recommended)",
+            "Upload your images",
             type=['jpg', 'jpeg', 'png', 'bmp'],
             accept_multiple_files=True,
             help="Drag and drop images here or click to browse"
