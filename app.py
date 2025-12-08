@@ -120,6 +120,9 @@ def main():
     st.markdown('<p class="main-header">🎨 Mini Dataset Generator</p>', unsafe_allow_html=True)
     st.markdown('<p class="sub-header">Create professional YOLO datasets with AI-powered augmentation and duplicate removal</p>', unsafe_allow_html=True)
     
+    # Welcome message
+    st.success("👋 **Welcome!** This tool helps you quickly create YOLO-ready datasets from a small set of images.")
+    
     st.info("💡 **Quick Start:** Upload 10-20 images → Configure settings in sidebar → Click Generate Dataset → Download ZIP")
     
     # Sidebar configuration
