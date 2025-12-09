@@ -373,17 +373,28 @@ def process_dataset(uploaded_files, dataset_name, class_names, duplicate_thresho
         output_folder = current_dir / "output"
         output_folder.mkdir(parents=True, exist_ok=True)
         
-        # Clean up and create fresh input folder
+        # Clean up old temporary folders and datasets from previous sessions
+        for item in output_folder.iterdir():
+            if item.is_dir():
+                try:
+                    shutil.rmtree(item)  # Remove all old folders
+                except Exception as e:
+                    st.warning(f"Could not clean up {item.name}: {str(e)}")
+        
+        # Also remove old ZIP files to save space
+        for zip_file in output_folder.glob("*.zip"):
+            try:
+                zip_file.unlink()
+            except Exception as e:
+                pass
+        
+        # Create fresh input folder
         input_folder = output_folder / "temp_input_images"
-        if input_folder.exists():
-            shutil.rmtree(input_folder)  # Remove old images from previous sessions
         input_folder.mkdir(parents=True, exist_ok=True)
         
         # Create labels folder if labels are provided
         if uploaded_labels:
             input_labels_folder = output_folder / "temp_input_labels"
-            if input_labels_folder.exists():
-                shutil.rmtree(input_labels_folder)  # Remove old labels
             input_labels_folder.mkdir(parents=True, exist_ok=True)
         
         # Save uploaded files
