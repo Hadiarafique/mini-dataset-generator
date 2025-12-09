@@ -373,13 +373,17 @@ def process_dataset(uploaded_files, dataset_name, class_names, duplicate_thresho
         output_folder = current_dir / "output"
         output_folder.mkdir(parents=True, exist_ok=True)
         
-        # Create persistent input folder
+        # Clean up and create fresh input folder
         input_folder = output_folder / "temp_input_images"
+        if input_folder.exists():
+            shutil.rmtree(input_folder)  # Remove old images from previous sessions
         input_folder.mkdir(parents=True, exist_ok=True)
         
         # Create labels folder if labels are provided
         if uploaded_labels:
             input_labels_folder = output_folder / "temp_input_labels"
+            if input_labels_folder.exists():
+                shutil.rmtree(input_labels_folder)  # Remove old labels
             input_labels_folder.mkdir(parents=True, exist_ok=True)
         
         # Save uploaded files
