@@ -29,7 +29,6 @@ from src.duplicate_remover import DuplicateRemover
 from src.augmentation import ImageAugmenter
 from src.dataset_builder import YOLODatasetBuilder
 from src.zip_creator import ZipCreator
-from src.report_generator import DatasetReportGenerator
 
 
 # Page configuration
@@ -654,54 +653,6 @@ def process_dataset(uploaded_files, dataset_name, class_names, duplicate_thresho
         with open(zip_file, 'rb') as f:
             zip_data = f.read()
         
-        # Generate PDF Report
-        st.markdown("---")
-        st.subheader("📄 Generating PDF Report")
-        
-        try:
-            with st.spinner("Creating PDF report..."):
-                report_generator = DatasetReportGenerator()
-                
-                # Prepare report data
-                report_data = {
-                    'dataset_name': dataset_name,
-                    'class_names': class_names,
-                    'statistics': {
-                        'unique_images': len(unique_images),
-                        'total_images': result['total_images']
-                    },
-                    'split_info': {
-                        'train_images': result['train_images'],
-                        'test_images': result['test_images'],
-                        'valid_images': result['valid_images'],
-                        'total_images': result['total_images'],
-                        'train_ratio': train_ratio,
-                        'test_ratio': test_ratio,
-                        'valid_ratio': valid_ratio
-                    },
-                    'processing_time': processing_time,
-                    'zip_info': zip_info,
-                    'uploaded_count': len(uploaded_files),
-                    'duplicates_removed': len(duplicates),
-                    'augmented_count': len(all_augmented_paths),
-                    'export_format': export_format,
-                    'has_labels': uploaded_labels is not None,
-                    'labels_matched': matched if uploaded_labels else 0
-                }
-                
-                # Generate PDF in output folder
-                pdf_filename = f"{dataset_name}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
-                pdf_path = output_folder / pdf_filename
-                report_generator.output_path = str(pdf_path)
-                report_generator.generate_report(report_data)
-                
-                st.success(f"✅ PDF Report generated: {pdf_filename}")
-        
-        except Exception as e:
-            st.warning(f"⚠️ PDF report generation failed: {str(e)}")
-            pdf_path = None
-        
-        # Download buttons
         col1, col2, col3 = st.columns([1, 2, 1])
         with col2:
             st.download_button(
@@ -713,23 +664,7 @@ def process_dataset(uploaded_files, dataset_name, class_names, duplicate_thresho
                 use_container_width=True
             )
         
-        # Add PDF download button if report was generated
-        if pdf_path and pdf_path.exists():
-            with open(pdf_path, 'rb') as f:
-                pdf_data = f.read()
-            
-            col1, col2, col3 = st.columns([1, 2, 1])
-            with col2:
-                st.download_button(
-                    label="📄 Download PDF Report",
-                    data=pdf_data,
-                    file_name=Path(pdf_path).name,
-                    mime="application/pdf",
-                    type="secondary",
-                    use_container_width=True
-                )
-        
-        st.info(f"💾 Files saved at: `{output_folder}`")
+        st.info(f"💾 ZIP file is also saved at: `{zip_file}`")
         
         # Final summary
         st.markdown("---")
