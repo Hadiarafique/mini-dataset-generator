@@ -16,3 +16,6 @@ streamlit>=1.28.0
 # Utilities
 tqdm>=4.66.0
 PyYAML>=6.0
+
+# PDF Report Generation
+reportlab>=4.0.0
